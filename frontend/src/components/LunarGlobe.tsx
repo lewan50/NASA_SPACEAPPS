@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CLPSMission, AstroTelemetry } from '../types/mission';
 import { createLunarTextures, selenographicToCartesian } from '../utils/lunarTextures';
 import { Compass, Eye, RotateCw, Globe, Zap, Sun, Radio } from 'lucide-react';
@@ -21,18 +22,24 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
   const moonMeshRef = useRef<THREE.Mesh | null>(null);
   const sunLightRef = useRef<THREE.DirectionalLight | null>(null);
   const markersGroupRef = useRef<THREE.Group | null>(null);
   const vectorsGroupRef = useRef<THREE.Group | null>(null);
 
+  // Safe ref for onSelectMission callback to keep scene lifecycle decoupled
+  const onSelectMissionRef = useRef(onSelectMission);
+  useEffect(() => {
+    onSelectMissionRef.current = onSelectMission;
+  }, [onSelectMission]);
+
   // Camera animation target
   const targetCamPosRef = useRef<THREE.Vector3 | null>(null);
   const targetLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
+  const isFlyingRef = useRef(false);
 
   // Controls state
-  const isDraggingRef = useRef(false);
-  const previousMousePositionRef = useRef({ x: 0, y: 0 });
   const [isAutoRotating, setIsAutoRotating] = useState(false);
   const [showGraticule, setShowGraticule] = useState(true);
   const [showVectors, setShowVectors] = useState(true);
@@ -40,27 +47,37 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
 
   // Fly camera smoothly toward target coordinate
   const flyToPosition = useCallback((targetPos: THREE.Vector3, lookAt = new THREE.Vector3(0, 0, 0)) => {
-    targetCamPosRef.current = targetPos;
-    targetLookAtRef.current = lookAt;
+    targetCamPosRef.current = targetPos.clone();
+    targetLookAtRef.current = lookAt.clone();
+    isFlyingRef.current = true;
   }, []);
 
-  // When a mission is selected, smoothly rotate camera to inspect the landing site
+  // When a mission is selected by the user, smoothly rotate camera to inspect the landing site
+  const prevMissionIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (selectedMission && cameraRef.current) {
-      const sitePos = selenographicToCartesian(
-        selectedMission.coordinates.latitude,
-        selectedMission.coordinates.longitude,
-        2.0
-      );
+    if (!selectedMission || !cameraRef.current) return;
+    if (prevMissionIdRef.current === selectedMission.mission_id) return;
 
-      // Position camera along the normal vector from center through landing site at distance 3.6
-      const camPos = sitePos.clone().normalize().multiplyScalar(3.8);
-      // For steep polar regions, tilt camera slightly to give a dramatic 3D oblique horizon view
-      if (Math.abs(selectedMission.coordinates.latitude) > 75) {
-        camPos.y += selectedMission.coordinates.latitude < 0 ? -0.4 : 0.4;
-      }
-      flyToPosition(camPos, sitePos);
+    // Avoid overriding default Global 3D view on first mount
+    if (prevMissionIdRef.current === null) {
+      prevMissionIdRef.current = selectedMission.mission_id;
+      return;
     }
+    prevMissionIdRef.current = selectedMission.mission_id;
+
+    const sitePos = selenographicToCartesian(
+      selectedMission.coordinates.latitude,
+      selectedMission.coordinates.longitude,
+      2.0
+    );
+
+    // Position camera along the normal vector from center through landing site at distance 3.8
+    const camPos = sitePos.clone().normalize().multiplyScalar(3.8);
+    // For steep polar regions, tilt camera slightly to give a dramatic 3D oblique horizon view
+    if (Math.abs(selectedMission.coordinates.latitude) > 75) {
+      camPos.y += selectedMission.coordinates.latitude < 0 ? -0.4 : 0.4;
+    }
+    flyToPosition(camPos, new THREE.Vector3(0, 0, 0));
   }, [selectedMission, flyToPosition]);
 
   // Update Sun Directional Light based on subsolar point
@@ -100,7 +117,8 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
 
     // 2. Camera
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 1000);
-    camera.position.set(2.8, 1.8, 3.5);
+    camera.position.set(3.8, 2.4, 4.8);
+    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
     // 3. Renderer
@@ -113,7 +131,26 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // 4. Background Starfield
+    // 4. Orbit Controls (freely interactive rotation and zoom around lunar center)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enablePan = false; // keeps the lunar globe centered
+    controls.minDistance = 2.4;
+    controls.maxDistance = 14.0;
+    controls.target.set(0, 0, 0);
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 1.0;
+    controls.update();
+    controlsRef.current = controls;
+
+    // Stop any active programmatic camera fly transition on user touch/drag
+    controls.addEventListener('start', () => {
+      targetCamPosRef.current = null;
+      isFlyingRef.current = false;
+    });
+
+    // 5. Background Starfield
     const starCount = 1800;
     const starGeo = new THREE.BufferGeometry();
     const starPos = new Float32Array(starCount * 3);
@@ -139,7 +176,7 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     const stars = new THREE.Points(starGeo, starMat);
     scene.add(stars);
 
-    // 5. Lighting
+    // 6. Lighting
     // Ambient light simulates deep-space earthshine and starlight
     const ambientLight = new THREE.AmbientLight('#242938', 0.28);
     scene.add(ambientLight);
@@ -156,7 +193,7 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     earthshine.position.set(0, 0, 10);
     scene.add(earthshine);
 
-    // 6. Moon Sphere Geometry & Material
+    // 7. Moon Sphere Geometry & Material
     const moonRadius = 2.0;
     const moonGeo = new THREE.SphereGeometry(moonRadius, 64, 64);
     const { albedoMap, bumpMap } = createLunarTextures(true);
@@ -207,64 +244,17 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     scene.add(vectorsGroup);
     vectorsGroupRef.current = vectorsGroup;
 
-    // 7. Mouse Orbit & Drag Interaction
-    let isMouseDown = false;
-    let previousPosition = { x: 0, y: 0 };
-
-    const onMouseDown = (e: MouseEvent) => {
-      isMouseDown = true;
-      previousPosition = { x: e.clientX, y: e.clientY };
+    // 8. Raycast Click on Markers (discriminate from orbit drag)
+    let pointerDownPos = { x: 0, y: 0 };
+    const onPointerDown = (e: PointerEvent) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
     };
 
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isMouseDown) return;
-
-      const deltaX = e.clientX - previousPosition.x;
-      const deltaY = e.clientY - previousPosition.y;
-
-      // Orbit camera around center
-      const rotSpeed = 0.005;
-      const cam = cameraRef.current;
-      if (cam) {
-        // Spherical rotation around Y and local right axis
-        const offset = cam.position.clone();
-        const radius = offset.length();
-
-        let theta = Math.atan2(offset.x, offset.z);
-        let phi = Math.acos(Math.max(-1, Math.min(1, offset.y / radius)));
-
-        theta -= deltaX * rotSpeed;
-        phi -= deltaY * rotSpeed;
-        phi = Math.max(0.05, Math.min(Math.PI - 0.05, phi));
-
-        offset.x = radius * Math.sin(phi) * Math.sin(theta);
-        offset.y = radius * Math.cos(phi);
-        offset.z = radius * Math.sin(phi) * Math.cos(theta);
-
-        cam.position.copy(offset);
-        cam.lookAt(targetLookAtRef.current);
-      }
-
-      previousPosition = { x: e.clientX, y: e.clientY };
-    };
-
-    const onMouseUp = () => {
-      isMouseDown = false;
-    };
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const cam = cameraRef.current;
-      if (!cam) return;
-      const zoomSpeed = 0.0018;
-      const dist = cam.position.length();
-      const newDist = Math.max(2.4, Math.min(12.0, dist + e.deltaY * zoomSpeed * dist));
-      cam.position.setLength(newDist);
-    };
-
-    // Raycast click detection on landing site markers
     const onClick = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (dist > 6) return; // Ignore drag gestures
+
+      const rect = renderer.domElement.getBoundingClientRect();
       const mouse = new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
@@ -281,52 +271,60 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
             topObj = topObj.parent;
           }
           if (topObj && topObj.userData.mission) {
-            onSelectMission(topObj.userData.mission);
+            onSelectMissionRef.current(topObj.userData.mission);
           }
         }
       }
     };
 
     const dom = renderer.domElement;
-    dom.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    dom.addEventListener('wheel', onWheel, { passive: false });
+    dom.addEventListener('pointerdown', onPointerDown);
     dom.addEventListener('click', onClick);
 
-    // Resize Handler
-    const handleResize = () => {
+    // 9. ResizeObserver for dynamic drawer toggles & window changes
+    const resizeObserver = new ResizeObserver(() => {
       if (!container || !renderer || !camera) return;
       const w = container.clientWidth;
       const h = container.clientHeight;
+      if (w === 0 || h === 0) return;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', handleResize);
+    });
+    resizeObserver.observe(container);
 
-    // 8. Render Animation Loop
+    // 10. Render Animation Loop
     let animationFrameId: number;
     const clock = new THREE.Clock();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
       const time = clock.getElapsedTime();
 
-      // Smooth camera slerp/lerp to target position
-      if (targetCamPosRef.current && camera) {
-        camera.position.lerp(targetCamPosRef.current, 0.045);
-        camera.lookAt(targetLookAtRef.current);
-        if (camera.position.distanceTo(targetCamPosRef.current) < 0.02) {
-          targetCamPosRef.current = null;
+      // Smooth camera lerp during programmatic flight
+      if (targetCamPosRef.current && isFlyingRef.current && camera) {
+        camera.position.lerp(targetCamPosRef.current, 0.05);
+        if (controlsRef.current) {
+          controlsRef.current.target.lerp(targetLookAtRef.current, 0.05);
+          controlsRef.current.update();
+        } else {
+          camera.lookAt(targetLookAtRef.current);
         }
-      }
 
-      // Auto rotation if enabled
-      if (isAutoRotating && moonMeshRef.current && !targetCamPosRef.current) {
-        moonMeshRef.current.rotation.y += delta * 0.05;
-        if (markersGroupRef.current) markersGroupRef.current.rotation.y += delta * 0.05;
+        if (
+          camera.position.distanceTo(targetCamPosRef.current) < 0.015 &&
+          (!controlsRef.current || controlsRef.current.target.distanceTo(targetLookAtRef.current) < 0.015)
+        ) {
+          camera.position.copy(targetCamPosRef.current);
+          if (controlsRef.current) {
+            controlsRef.current.target.copy(targetLookAtRef.current);
+            controlsRef.current.update();
+          }
+          targetCamPosRef.current = null;
+          isFlyingRef.current = false;
+        }
+      } else if (controlsRef.current) {
+        controlsRef.current.update();
       }
 
       // Pulse marker rings
@@ -347,18 +345,16 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      dom.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      dom.removeEventListener('wheel', onWheel);
+      dom.removeEventListener('pointerdown', onPointerDown);
       dom.removeEventListener('click', onClick);
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+      controls.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
-  }, [onSelectMission]);
+  }, []);
 
   // Re-build 3D Landing Markers when missions or selection change
   useEffect(() => {
@@ -393,8 +389,6 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
       if (mission.status === 'Landed') colorHex = '#10b981';
       else if (mission.status === 'Transit Anomaly') colorHex = '#f97316';
       else if (mission.coordinates.latitude < -70) colorHex = '#38bdf8'; // Polar South
-
-      const color = new THREE.Color(isSelected ? '#ffffff' : colorHex);
 
       // 1. Vertical Target Pin / Stem
       const pinHeight = isSelected ? 0.28 : 0.18;
@@ -490,25 +484,33 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     vecGroup.add(earthLine);
   }, [selectedMission, telemetry, showVectors]);
 
+  // Synchronize auto rotation with OrbitControls
+  useEffect(() => {
+    if (controlsRef.current) {
+      controlsRef.current.autoRotate = isAutoRotating;
+      controlsRef.current.autoRotateSpeed = 1.0;
+    }
+  }, [isAutoRotating]);
+
   // View presets
   const setView = (mode: 'global' | 'southPole' | 'nearSide' | 'farSide') => {
     setActiveViewMode(mode);
     switch (mode) {
       case 'southPole':
-        // Look directly up into South Pole from below
-        flyToPosition(new THREE.Vector3(0.01, -3.8, 0.4), new THREE.Vector3(0, -2.0, 0));
+        // Look directly up into South Pole from below, centered
+        flyToPosition(new THREE.Vector3(0.001, -6.5, 0.001), new THREE.Vector3(0, 0, 0));
         break;
       case 'nearSide':
         // Centered on Earth-facing meridian (0° Lat, 0° Lon)
-        flyToPosition(new THREE.Vector3(0, 0, 4.0), new THREE.Vector3(0, 0, 0));
+        flyToPosition(new THREE.Vector3(0, 0, 6.5), new THREE.Vector3(0, 0, 0));
         break;
       case 'farSide':
         // Centered on Far Side (0° Lat, 180° Lon)
-        flyToPosition(new THREE.Vector3(0, 0, -4.0), new THREE.Vector3(0, 0, 0));
+        flyToPosition(new THREE.Vector3(0, 0, -6.5), new THREE.Vector3(0, 0, 0));
         break;
       case 'global':
       default:
-        flyToPosition(new THREE.Vector3(2.8, 1.8, 3.5), new THREE.Vector3(0, 0, 0));
+        flyToPosition(new THREE.Vector3(3.8, 2.4, 4.8), new THREE.Vector3(0, 0, 0));
         break;
     }
   };
@@ -602,7 +604,7 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
 
       {/* Subsolar & Subearth Telemetry Coordinates Stamp */}
       {telemetry && (
-        <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 shadow-xl pointer-events-none flex flex-col gap-1 border-l-4 border-l-cyan-500">
+        <div className="absolute bottom-20 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 shadow-xl pointer-events-none flex flex-col gap-1 border-l-4 border-l-cyan-500">
           <div className="flex items-center gap-2 text-cyan-400 font-semibold tracking-wider uppercase text-[10px]">
             <Zap className="w-3 h-3 animate-pulse" />
             <span>Ephemeris Horizon Reference (IAU Moon 2000)</span>

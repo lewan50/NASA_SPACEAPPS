@@ -133,10 +133,10 @@ export function App() {
   }, [selectedMission, engineOnline, currentDate]);
 
   // Handlers
-  const handleSelectMission = (mission: CLPSMission) => {
+  const handleSelectMission = useCallback((mission: CLPSMission) => {
     setSelectedMission(mission);
     setDetailOpen(true);
-  };
+  }, []);
 
   return (
     <div className="w-screen h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
