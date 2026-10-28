@@ -33,24 +33,24 @@ export const Navbar: React.FC<NavbarProps> = ({ missionCount, engineOnline }) =>
       </div>
 
       {/* Ephemeris Engine Status & Planetary Reference Standard */}
-      <div className="flex items-center gap-3 md:gap-4 text-xs">
-        <div className="hidden lg:flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
+      <div className="flex items-center gap-2 md:gap-3 text-xs">
+        <div className="hidden xl:flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300">
           <Satellite className="w-3.5 h-3.5 text-amber-400" />
           <span>Datum: IAU Moon 2000 (R = 1,737.4 km)</span>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 text-[11px]">
-          <span className="text-slate-400">Missions:</span>
+        <div className="flex items-center gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800 text-[11px]">
+          <span className="text-slate-400 hidden sm:inline">Missions:</span>
           <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.2 rounded">
             {missionCount}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 text-[11px]">
+        <div className="flex items-center gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-800 text-[11px]">
           <Activity className={`w-3.5 h-3.5 ${engineOnline ? 'text-emerald-400' : 'text-amber-400'} animate-pulse`} />
-          <span className="hidden sm:inline text-slate-300">Astro API:</span>
+          <span className="hidden md:inline text-slate-300">Astro API:</span>
           <span className={`font-semibold font-mono ${engineOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
-            {engineOnline ? 'ONLINE' : 'LOCAL CACHE'}
+            {engineOnline ? 'ONLINE' : 'LOCAL'}
           </span>
         </div>
       </div>

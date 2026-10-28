@@ -75,10 +75,18 @@ NASA/
 ---
 
 ## 🛰️ NASA CLPS Missions Included
-- **Astrobotic Peregrine Mission 1** (Sinus Viscositatis)
-- **Intuitive Machines IM-1 / Odysseus** (Malapert A, South Pole)
-- **Intuitive Machines IM-2 / Athena** (Shackleton Connecting Ridge)
-- **Firefly Aerospace Blue Ghost Mission 1** (Mare Crisium)
-- **Draper Series 2 / APEX 1.0** (Schrödinger Basin, Far Side)
-- **Astrobotic Griffin Mission 1** (Nobile Crater / VIPER)
-- **Intuitive Machines IM-3** (Reiner Gamma Swirl)
+- **Astrobotic Peregrine Mission 1** (Sinus Viscositatis) — Status: Anomaly (Jan 2024 re-entry)
+- **Intuitive Machines IM-1 / Odysseus** (Malapert A, South Pole) — Status: Landed (Feb 2024)
+- **Intuitive Machines IM-2 / Athena** (Mons Mouton, South Pole) — Status: Landed (Mar 6, 2025)
+- **Firefly Aerospace Blue Ghost Mission 1** (Mons Latreille, Mare Crisium) — Status: Landed (Mar 2, 2025)
+- **Draper Series 2 / APEX 1.0** (Schrödinger Basin, Far Side) — Status: Cancelled (Jul 2026)
+- **Astrobotic Griffin Mission 1** (Lunar South Pole, Site TBD) — Status: Upcoming (NET late 2026)
+- **Intuitive Machines IM-3** (Reiner Gamma Swirl) — Status: Upcoming (early 2027)
+
+---
+
+## 🌌 Texture & Data Sources
+- **Surface Imagery**: NASA LRO LROC WAC color mosaic (4096×2048) + LOLA laser altimetry DEM (2880×1440) from [SVS CGI Moon Kit](https://svs.gsfc.nasa.gov/4720)
+- **Normal Map**: DEM-derived tangent-space normals for crisp crater shading
+- **Mission Data**: NASA CLPS program official sources, verified against NASA news releases and LROC landing region pages
+- **Licensing**: All NASA imagery and data are public domain (credit requested per [NASA media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/))

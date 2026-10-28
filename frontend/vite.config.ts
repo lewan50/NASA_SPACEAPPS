@@ -12,7 +12,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        // Pin IPv4: uvicorn binds 0.0.0.0 (IPv4-only) and Node resolves
+        // 'localhost' to ::1 first on Windows, which fails the proxy.
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

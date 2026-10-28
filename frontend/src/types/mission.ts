@@ -1,6 +1,6 @@
 export interface LunarCoordinate {
   latitude: number;          // Deg [-90.0, 90.0]
-  longitude: number;         // Deg [-180.0, 180.0] or [0.0, 360.0]
+  longitude: number;         // Deg [-180.0, 180.0] IAU standard
   elevation_km: number;      // km relative to 1737.4 km sphere
   is_confirmed: boolean;     // False indicates "Target Candidate Region"
   designation: string;       // "Confirmed Landing Site" | "Target Candidate Region"
@@ -34,7 +34,7 @@ export interface CLPSMission {
   coordinates: LunarCoordinate;
   launch_date?: string;
   landing_date?: string;
-  status: 'Landed' | 'Upcoming' | 'Transit Anomaly' | 'Retired' | string;
+  status: 'Landed' | 'Upcoming' | 'Cancelled' | 'Anomaly';
   lander_specs: LanderSpecs;
   payload_array: CLPSPayload[];
   summary: string;

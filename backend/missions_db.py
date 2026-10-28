@@ -34,7 +34,7 @@ class CLPSMission(BaseModel):
     coordinates: LunarCoordinate
     launch_date: Optional[str] = None
     landing_date: Optional[str] = None
-    status: str  # "Landed", "Target Candidate", "Transit Anomaly", "Upcoming"
+    status: str  # "Landed", "Upcoming", "Anomaly", "Cancelled"
     lander_specs: Dict[str, Any]
     payload_array: List[CLPSPayload]
     summary: str
@@ -129,17 +129,17 @@ CLPS_CATALOG: List[CLPSMission] = [
         task_order="Task Order PRIME-1 (Polar Resources Ice Mining Experiment)",
         vendor="Intuitive Machines",
         lander_name="Nova-C ('Athena')",
-        target_region="Shackleton Connecting Ridge (South Pole)",
+        target_region="Mons Mouton (Lunar South Pole)",
         coordinates=LunarCoordinate(
-            latitude=-89.44,
-            longitude=222.60,
+            latitude=-84.79,
+            longitude=29.20,
             elevation_km=1.20,
-            is_confirmed=False,
-            designation="Target Candidate Region"
+            is_confirmed=True,
+            designation="Confirmed Landing Site"
         ),
-        launch_date="2025-01-15T00:00:00Z",
-        landing_date="2025-01-22T00:00:00Z",
-        status="Upcoming",
+        launch_date="2025-02-27T00:16:00Z",
+        landing_date="2025-03-06T17:31:00Z",
+        status="Landed",
         lander_specs={
             "propellant": "Liquid Methane / LOX",
             "payload_capacity_kg": 130.0,
@@ -186,7 +186,7 @@ CLPS_CATALOG: List[CLPSMission] = [
                 instrument_type="Autonomous Surface Mobility"
             )
         ],
-        summary="Critical in-situ resource utilization (ISRU) demonstration drilling for subsurface water ice deposits on the sunlit ridge directly bordering Shackleton crater."
+        summary="Landed atop Mons Mouton near the lunar south pole on March 6, 2025 carrying NASA's PRIME-1 ice-drilling demonstration (TRIDENT + MSolo), Nokia's 4G/LTE network, and Lunar Outpost's MAPP rover. The lander tipped over after touchdown and operated for roughly 13 hours before its batteries were depleted."
     ),
 
     CLPSMission(
@@ -194,17 +194,17 @@ CLPS_CATALOG: List[CLPSMission] = [
         task_order="Task Order 20A (TO-20A)",
         vendor="Firefly Aerospace",
         lander_name="Blue Ghost Mission 1",
-        target_region="Mare Crisium Basin",
+        target_region="Mons Latreille, Mare Crisium",
         coordinates=LunarCoordinate(
             latitude=18.56,
             longitude=61.81,
             elevation_km=-3.60,
-            is_confirmed=False,
-            designation="Target Candidate Region"
+            is_confirmed=True,
+            designation="Confirmed Landing Site"
         ),
-        launch_date="2024-11-20T00:00:00Z",
-        landing_date="2024-12-05T00:00:00Z",
-        status="Upcoming",
+        launch_date="2025-01-15T06:11:00Z",
+        landing_date="2025-03-02T08:34:00Z",
+        status="Landed",
         lander_specs={
             "propellant": "Hypergolic MON-25 / MMH Bi-propellant",
             "payload_capacity_kg": 155.0,
@@ -260,7 +260,7 @@ CLPS_CATALOG: List[CLPSMission] = [
                 instrument_type="Laser Retroreflector"
             )
         ],
-        summary="Comprehensive geophysical investigation of Mare Crisium—a massive basaltic impact basin—delivering 10 scientific payloads to characterize regolith thermal conductivity and space weather interaction."
+        summary="Firefly's Blue Ghost Mission 1 touched down successfully near Mons Latreille in Mare Crisium on March 2, 2025, delivering 10 NASA science and technology payloads. It operated through a full lunar day (about 14 Earth days), capturing a total lunar eclipse and high-definition imagery of the lunar sunset before its systems shut down at nightfall."
     ),
 
     CLPSMission(
@@ -268,7 +268,7 @@ CLPS_CATALOG: List[CLPSMission] = [
         task_order="Task Order 20B (TO-20B)",
         vendor="Astrobotic",
         lander_name="Griffin Mission 1",
-        target_region="Nobile Crater Rim (South Pole)",
+        target_region="Lunar South Pole (Site TBD)",
         coordinates=LunarCoordinate(
             latitude=-85.20,
             longitude=36.10,
@@ -276,8 +276,8 @@ CLPS_CATALOG: List[CLPSMission] = [
             is_confirmed=False,
             designation="Target Candidate Region"
         ),
-        launch_date="2025-09-01T00:00:00Z",
-        landing_date="2025-09-12T00:00:00Z",
+        launch_date=None,
+        landing_date=None,
         status="Upcoming",
         lander_specs={
             "propellant": "Hypergolic hydrazine/MON-3 Bi-propellant",
@@ -289,15 +289,6 @@ CLPS_CATALOG: List[CLPSMission] = [
         },
         payload_array=[
             CLPSPayload(
-                payload_id="MASS-SIM-VIPER",
-                name="South Pole Heavy Surface Rover / Volatiles Science Rig",
-                acronym="VIPER-Class",
-                agency_or_institution="NASA Ames Research Center",
-                mass_kg=430.0,
-                objective="Map the concentration of water ice and volatiles in Permanently Shadowed Regions (PSRs).",
-                instrument_type="Heavy Robotic Rover"
-            ),
-            CLPSPayload(
                 payload_id="LRA-GRIFFIN",
                 name="Laser Retroreflector Array",
                 acronym="LRA",
@@ -307,7 +298,7 @@ CLPS_CATALOG: List[CLPSMission] = [
                 instrument_type="Retroreflector"
             )
         ],
-        summary="Astrobotic's heavy-class Griffin lander configured to execute automated ramp deployment of NASA's robotic exploration assets onto the rugged terrain surrounding Nobile Crater."
+        summary="Astrobotic's heavy-class Griffin lander, targeting a lunar south pole landing NET late 2026. The mission was re-scoped to a commercial payload manifest after NASA cancelled the VIPER rover in July 2024; the landing site and final payload list are to be announced."
     ),
 
     CLPSMission(
@@ -323,9 +314,9 @@ CLPS_CATALOG: List[CLPSMission] = [
             is_confirmed=False,
             designation="Target Candidate Region"
         ),
-        launch_date="2026-04-01T00:00:00Z",
-        landing_date="2026-04-14T00:00:00Z",
-        status="Upcoming",
+        launch_date=None,
+        landing_date=None,
+        status="Cancelled",
         lander_specs={
             "propellant": "Bi-propellant Hydrazine",
             "payload_capacity_kg": 300.0,
@@ -363,7 +354,7 @@ CLPS_CATALOG: List[CLPSMission] = [
                 instrument_type="Fluxgate Magnetometer"
             )
         ],
-        summary="Pioneering landing inside the geologically pristine Schrödinger impact basin on the lunar farside, measuring farside moonquakes and deep planetary interior composition."
+        summary="Draper and NASA mutually agreed to end this CLPS task order in July 2026. Draper's SERIES-2 lander had been slated to deliver the Farside Seismic Suite and other instruments to Schrödinger Basin on the lunar far side—a pioneering site for farside seismology."
     ),
 
     CLPSMission(
@@ -379,8 +370,8 @@ CLPS_CATALOG: List[CLPSMission] = [
             is_confirmed=False,
             designation="Target Candidate Region"
         ),
-        launch_date="2026-01-10T00:00:00Z",
-        landing_date="2026-01-20T00:00:00Z",
+        launch_date=None,
+        landing_date=None,
         status="Upcoming",
         lander_specs={
             "propellant": "Liquid Methane / LOX",
@@ -410,7 +401,7 @@ CLPS_CATALOG: List[CLPSMission] = [
                 instrument_type="Autonomous Multi-Agent Swarm"
             )
         ],
-        summary="Exploration of the iconic magnetic anomaly and albedo swirl Reiner Gamma in Oceanus Procellarum, deploying autonomous cooperative rovers to sample magnetic field topology."
+        summary="Exploration of the iconic magnetic anomaly and albedo swirl Reiner Gamma in Oceanus Procellarum, deploying autonomous cooperative rovers to sample magnetic field topology. Launch is currently expected in early 2027."
     ),
 
     CLPSMission(
@@ -420,15 +411,15 @@ CLPS_CATALOG: List[CLPSMission] = [
         lander_name="Peregrine Mission 1",
         target_region="Sinus Viscositatis (Gruithuisen Domes)",
         coordinates=LunarCoordinate(
-            latitude=35.20,
-            longitude=315.00,
+            latitude=36.10,
+            longitude=319.60,
             elevation_km=-2.00,
             is_confirmed=False,
             designation="Target Candidate Region"
         ),
         launch_date="2024-01-08T07:18:00Z",
         landing_date=None,
-        status="Transit Anomaly",
+        status="Anomaly",
         lander_specs={
             "propellant": "Bi-propellant Hydrazine / MON-25",
             "payload_capacity_kg": 90.0,
@@ -466,7 +457,7 @@ CLPS_CATALOG: List[CLPSMission] = [
                 instrument_type="Ion-Trap Mass Spectrometer"
             )
         ],
-        summary="Astrobotic's maiden CLPS flight launched aboard Vulcan Centaur; successfully operated in cislunar space for 10 days gathering space radiation and mass spectrometry data despite a post-separation propulsion anomaly."
+        summary="Astrobotic's maiden CLPS flight launched aboard Vulcan Centaur on January 8, 2024. A propellant leak after separation made landing impossible; operators successfully guided the spacecraft through 10 days of cislunar science operations before a controlled destructive re-entry over the South Pacific on January 18, 2024."
     )
 ]
 

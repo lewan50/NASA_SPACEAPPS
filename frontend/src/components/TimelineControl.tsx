@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, RotateCcw, Clock, Moon } from 'lucide-react';
 
 interface TimelineControlProps {
@@ -15,12 +15,19 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
   onToggleLive,
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [speedMultiplier] = useState(12); // hours per tick
+  const speedMultiplier = 12; // hours per tick (constant)
 
-  // Playback timer loop: increments time by 6 hours every 800ms
+  // Local scrub state: tracks slider position during drag without firing
+  // expensive telemetry recalculation on every tick. Only commits on release.
+  const [scrubDays, setScrubDays] = useState<number | null>(null);
+  const isScrubbingRef = useRef(false);
+
+  // Playback timer loop: increments time by speedMultiplier hours every 600ms.
+  // Pauses updates while user is actively scrubbing to prevent slider jumps.
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
+      if (isScrubbingRef.current) return; // Don't fight the user's drag
       onChangeDate(new Date(currentDate.getTime() + speedMultiplier * 3600 * 1000));
     }, 600);
     return () => clearInterval(interval);
@@ -30,11 +37,31 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
   const now = new Date();
   const diffDays = (currentDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Use local scrub value while dragging, committed value otherwise
+  const displayDays = scrubDays ?? diffDays;
+  const displayDate = scrubDays !== null
+    ? new Date(now.getTime() + scrubDays * 24 * 3600 * 1000)
+    : currentDate;
+
+  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const daysOffset = parseFloat(e.target.value);
-    const newDate = new Date(now.getTime() + daysOffset * 24 * 3600 * 1000);
-    onChangeDate(newDate);
-  };
+    setScrubDays(daysOffset); // Local only — no parent callback yet
+  }, []);
+
+  const commitScrub = useCallback(() => {
+    if (!isScrubbingRef.current) return;
+    isScrubbingRef.current = false;
+    if (scrubDays !== null) {
+      const freshNow = new Date(); // Use current time, not stale render-time `now`
+      const newDate = new Date(freshNow.getTime() + scrubDays * 24 * 3600 * 1000);
+      onChangeDate(newDate);
+      setScrubDays(null);
+    }
+  }, [scrubDays, onChangeDate]);
+
+  const handleSliderMouseDown = () => { isScrubbingRef.current = true; };
+  const handleSliderMouseUp = () => { commitScrub(); };
+  const handleSliderTouchEnd = () => { commitScrub(); };
 
   return (
     <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-3 px-4 shadow-2xl flex flex-wrap items-center justify-between gap-4 text-xs text-slate-200">
@@ -87,26 +114,30 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
       <div className="flex items-center gap-3 font-mono bg-slate-950/70 px-3 py-1.5 rounded-xl border border-slate-800/80 text-[11px]">
         <div className="flex items-center gap-1.5 text-cyan-400">
           <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span>UTC: {currentDate.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
+          <span>UTC: {displayDate.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
         </div>
         <div className="text-slate-500 hidden sm:block">|</div>
         <div className="text-slate-400 hidden sm:flex items-center gap-1">
           <Moon className="w-3.5 h-3.5 text-amber-400" />
-          <span>Offset: {diffDays > 0 ? `+${diffDays.toFixed(1)}` : diffDays.toFixed(1)} d</span>
+          <span>Offset: {displayDays > 0 ? `+${displayDays.toFixed(1)}` : displayDays.toFixed(1)} d</span>
         </div>
       </div>
 
       {/* Synodic Month Timeline Slider */}
-      <div className="flex-1 min-w-[200px] flex items-center gap-3">
+      <div className="flex items-center gap-3" style={{ width: '320px' }}>
         <span className="text-[10px] font-mono text-slate-400 shrink-0">-15d</span>
         <input
           type="range"
           min="-15"
           max="15"
           step="0.25"
-          value={diffDays}
+          value={displayDays}
           onChange={handleSliderChange}
-          className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+          onMouseDown={handleSliderMouseDown}
+          onMouseUp={handleSliderMouseUp}
+          onTouchStart={handleSliderMouseDown}
+          onTouchEnd={handleSliderTouchEnd}
+          className="flex-1 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
         />
         <span className="text-[10px] font-mono text-slate-400 shrink-0">+15d</span>
       </div>
