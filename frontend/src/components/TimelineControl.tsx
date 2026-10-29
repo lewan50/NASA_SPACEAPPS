@@ -17,9 +17,7 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const speedMultiplier = 12; // hours per tick (constant)
 
-  // Local scrub state: tracks slider position during drag without firing
-  // expensive telemetry recalculation on every tick. Only commits on release.
-  const [scrubDays, setScrubDays] = useState<number | null>(null);
+  // Track active drag to pause playback during scrub
   const isScrubbingRef = useRef(false);
 
   // Playback timer loop: increments time by speedMultiplier hours every 600ms.
@@ -37,31 +35,16 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
   const now = new Date();
   const diffDays = (currentDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
 
-  // Use local scrub value while dragging, committed value otherwise
-  const displayDays = scrubDays ?? diffDays;
-  const displayDate = scrubDays !== null
-    ? new Date(now.getTime() + scrubDays * 24 * 3600 * 1000)
-    : currentDate;
-
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const daysOffset = parseFloat(e.target.value);
-    setScrubDays(daysOffset); // Local only — no parent callback yet
-  }, []);
-
-  const commitScrub = useCallback(() => {
-    if (!isScrubbingRef.current) return;
-    isScrubbingRef.current = false;
-    if (scrubDays !== null) {
-      const freshNow = new Date(); // Use current time, not stale render-time `now`
-      const newDate = new Date(freshNow.getTime() + scrubDays * 24 * 3600 * 1000);
-      onChangeDate(newDate);
-      setScrubDays(null);
-    }
-  }, [scrubDays, onChangeDate]);
+    const freshNow = new Date();
+    const newDate = new Date(freshNow.getTime() + daysOffset * 24 * 3600 * 1000);
+    onChangeDate(newDate); // Immediate update for smooth transitions
+  }, [onChangeDate]);
 
   const handleSliderMouseDown = () => { isScrubbingRef.current = true; };
-  const handleSliderMouseUp = () => { commitScrub(); };
-  const handleSliderTouchEnd = () => { commitScrub(); };
+  const handleSliderMouseUp = () => { isScrubbingRef.current = false; };
+  const handleSliderTouchEnd = () => { isScrubbingRef.current = false; };
 
   return (
     <div className="bg-slate-950/80 backdrop-blur-xl border border-white/5 rounded-xl p-3 px-4 shadow-sm flex flex-wrap items-center justify-between gap-4 text-sm">
@@ -114,12 +97,12 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
       <div className="flex items-center gap-3 font-mono text-xs">
         <div className="flex items-center gap-1.5 text-slate-300">
           <Clock className="w-3.5 h-3.5 text-slate-500" />
-          <span>{displayDate.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
+          <span>{currentDate.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
         </div>
         <div className="text-slate-600 hidden sm:block">|</div>
         <div className="text-slate-400 hidden sm:flex items-center gap-1">
           <Moon className="w-3.5 h-3.5 text-slate-600" />
-          <span>{displayDays > 0 ? `+${displayDays.toFixed(1)}` : displayDays.toFixed(1)} d</span>
+          <span>{diffDays > 0 ? `+${diffDays.toFixed(1)}` : diffDays.toFixed(1)} d</span>
         </div>
       </div>
 
@@ -131,7 +114,7 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
           min="-15"
           max="15"
           step="0.25"
-          value={displayDays}
+          value={diffDays}
           onChange={handleSliderChange}
           onMouseDown={handleSliderMouseDown}
           onMouseUp={handleSliderMouseUp}
