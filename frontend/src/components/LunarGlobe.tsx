@@ -60,7 +60,12 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     to: THREE.Vector3;
     progress: number;
     speed: number;
-  }>({ active: false, from: new THREE.Vector3(), to: new THREE.Vector3(), progress: 0, speed: 0.8 });
+    fromSpherical?: THREE.Spherical;
+    toSpherical?: THREE.Spherical;
+    deltaTheta?: number;
+    fromRadius?: number;
+    toRadius?: number;
+  }>({ active: false, from: new THREE.Vector3(), to: new THREE.Vector3(), progress: 0, speed: 0.7 });
 
   // Controls state
   const [isAutoRotating, setIsAutoRotating] = useState(false);
@@ -76,15 +81,33 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     arcTransitionRef.current.active = false;
   }, []);
 
-  // Arc transition for near/far side (orbits around moon instead of through it)
+  // Arc transition for orbital camera movement around the moon
   const arcToPosition = useCallback((targetPos: THREE.Vector3, lookAt = new THREE.Vector3(0, 0, 0)) => {
     if (!cameraRef.current) return;
+    const fromPos = cameraRef.current.position.clone();
+    const fromRadius = fromPos.length();
+    const toRadius = targetPos.length();
+    
+    // Convert to spherical coordinates for smooth orbital interpolation
+    const fromSpherical = new THREE.Spherical().setFromVector3(fromPos);
+    const toSpherical = new THREE.Spherical().setFromVector3(targetPos);
+    
+    // Ensure we take the shortest path around the sphere
+    let deltaTheta = toSpherical.theta - fromSpherical.theta;
+    if (deltaTheta > Math.PI) deltaTheta -= 2 * Math.PI;
+    if (deltaTheta < -Math.PI) deltaTheta += 2 * Math.PI;
+    
     arcTransitionRef.current = {
       active: true,
-      from: cameraRef.current.position.clone(),
+      from: fromPos,
       to: targetPos.clone(),
       progress: 0,
-      speed: 0.6, // Slightly slower for smoother arc
+      speed: 0.7,
+      fromSpherical: fromSpherical,
+      toSpherical: toSpherical,
+      deltaTheta: deltaTheta,
+      fromRadius: fromRadius,
+      toRadius: toRadius,
     };
     targetLookAtRef.current = lookAt;
     targetCamPosRef.current = null;
@@ -675,24 +698,26 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
         }
       }
 
-      // Arc transition for near/far side (orbits around moon) with easing
-      if (arcTransitionRef.current.active && camera) {
+      // Arc transition using spherical interpolation (orbits around moon)
+      if (arcTransitionRef.current.active && camera && arcTransitionRef.current.fromSpherical && arcTransitionRef.current.toSpherical) {
         const arc = arcTransitionRef.current;
         arc.progress += delta * arc.speed;
+        
         if (arc.progress >= 1) {
           arc.progress = 1;
           arc.active = false;
           camera.position.copy(arc.to);
         } else {
           const easedT = easeInOutCubic(arc.progress);
-          const radius = arc.from.length();
-          const control = new THREE.Vector3(0, radius * 1.15, 0);
-          const pos = new THREE.Vector3()
-            .copy(arc.from)
-            .multiplyScalar((1 - easedT) * (1 - easedT))
-            .add(control.clone().multiplyScalar(2 * (1 - easedT) * easedT))
-            .add(arc.to.clone().multiplyScalar(easedT * easedT));
-          camera.position.copy(pos);
+          
+          // Spherical linear interpolation for smooth orbital path
+          const currentPhi = THREE.MathUtils.lerp(arc.fromSpherical!.phi, arc.toSpherical!.phi, easedT);
+          const currentTheta = arc.fromSpherical!.theta + (arc.deltaTheta! * easedT);
+          const currentRadius = THREE.MathUtils.lerp(arc.fromRadius!, arc.toRadius!, easedT);
+          
+          // Convert back to Cartesian coordinates
+          const spherical = new THREE.Spherical(currentRadius, currentPhi, currentTheta);
+          camera.position.setFromSpherical(spherical);
         }
         camera.lookAt(targetLookAtRef.current);
       }
@@ -929,7 +954,7 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     vecGroup.add(earthLine);
   }, [selectedMission, telemetry, showVectors]);
 
-  // View presets — all transitions that would pass through the moon use arc orbit
+  // View presets — all transitions use orbital arc around the moon
   const setView = (mode: 'global' | 'northPole' | 'southPole' | 'nearSide' | 'farSide') => {
     setActiveViewMode(mode);
 
@@ -944,24 +969,13 @@ export const LunarGlobe: React.FC<LunarGlobeProps> = ({
     const target = targets[mode];
     if (!target || !cameraRef.current) return;
 
-    // Check if straight-line path would cut through the moon sphere (radius 2.0).
-    // If the current camera and target are on opposite sides (dot < 0), the line
-    // passes through the interior — must arc over the top instead.
-    const camPos = cameraRef.current.position;
-    const fromNorm = camPos.clone().normalize();
-    const toNorm = target.clone().normalize();
-    const dot = fromNorm.dot(toNorm);
-
-    // Global view is always safe to fly to (oblique angle, never opposite side).
-    // For all other presets, arc if we'd cross through the moon.
+    // Global view uses direct fly (oblique angle, always safe)
+    // All other presets use orbital arc to avoid going through the moon
     if (mode === 'global') {
       flyToPosition(target, new THREE.Vector3(0, 0, 0));
-    } else if (dot < 0.3) {
-      // Opposite or wide-angle hemisphere — arc over the moon
-      arcToPosition(target, new THREE.Vector3(0, 0, 0));
     } else {
-      // Same hemisphere — direct fly is safe
-      flyToPosition(target, new THREE.Vector3(0, 0, 0));
+      // Always arc for pole/side views to ensure smooth orbital transition
+      arcToPosition(target, new THREE.Vector3(0, 0, 0));
     }
   };
 
