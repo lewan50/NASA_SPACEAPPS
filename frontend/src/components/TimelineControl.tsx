@@ -64,7 +64,7 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
   const handleSliderTouchEnd = () => { commitScrub(); };
 
   return (
-    <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-3 px-4 shadow-2xl flex flex-wrap items-center justify-between gap-4 text-xs text-slate-200">
+    <div className="bg-slate-950/80 backdrop-blur-xl border border-white/5 rounded-xl p-3 px-4 shadow-sm flex flex-wrap items-center justify-between gap-4 text-sm">
       {/* Time Mode and Play/Pause */}
       <div className="flex items-center gap-2">
         <button
@@ -72,10 +72,10 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
             if (isLive) onToggleLive();
             setIsPlaying(!isPlaying);
           }}
-          className={`p-2 rounded-xl border transition-all ${
+          className={`p-2 rounded-lg transition-all ${
             isPlaying
-              ? 'bg-amber-600/30 text-amber-300 border-amber-500/60'
-              : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-700'
+              ? 'bg-amber-500/20 text-amber-300'
+              : 'bg-slate-800/50 text-slate-300 hover:bg-slate-800'
           }`}
           title={isPlaying ? 'Pause orbital timeline' : 'Play time-lapse (advance terminator)'}
         >
@@ -87,15 +87,15 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
             setIsPlaying(false);
             onToggleLive();
           }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-mono font-semibold ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all font-medium ${
             isLive
-              ? 'bg-cyan-600/30 text-cyan-300 border-cyan-500/60 shadow-md shadow-cyan-950'
-              : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:bg-slate-700'
+              ? 'bg-cyan-500/20 text-cyan-300'
+              : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800'
           }`}
           title="Sync with real-time current UTC"
         >
-          <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-cyan-400 animate-ping' : 'bg-slate-500'}`} />
-          <span>LIVE NOW</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-cyan-400 animate-pulse' : 'bg-slate-600'}`} />
+          <span>Live</span>
         </button>
 
         <button
@@ -103,29 +103,29 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
             setIsPlaying(false);
             onChangeDate(new Date());
           }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+          className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors"
           title="Reset to current moment"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="w-4 h-4" />
         </button>
       </div>
 
       {/* Date & UTC Readout */}
-      <div className="flex items-center gap-3 font-mono bg-slate-950/70 px-3 py-1.5 rounded-xl border border-slate-800/80 text-[11px]">
-        <div className="flex items-center gap-1.5 text-cyan-400">
-          <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span>UTC: {displayDate.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
+      <div className="flex items-center gap-3 font-mono text-xs">
+        <div className="flex items-center gap-1.5 text-slate-300">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span>{displayDate.toISOString().replace('T', ' ').slice(0, 19)}Z</span>
         </div>
-        <div className="text-slate-500 hidden sm:block">|</div>
+        <div className="text-slate-600 hidden sm:block">|</div>
         <div className="text-slate-400 hidden sm:flex items-center gap-1">
-          <Moon className="w-3.5 h-3.5 text-amber-400" />
-          <span>Offset: {displayDays > 0 ? `+${displayDays.toFixed(1)}` : displayDays.toFixed(1)} d</span>
+          <Moon className="w-3.5 h-3.5 text-slate-600" />
+          <span>{displayDays > 0 ? `+${displayDays.toFixed(1)}` : displayDays.toFixed(1)} d</span>
         </div>
       </div>
 
       {/* Synodic Month Timeline Slider */}
       <div className="flex items-center gap-3" style={{ width: '320px' }}>
-        <span className="text-[10px] font-mono text-slate-400 shrink-0">-15d</span>
+        <span className="text-[11px] font-mono text-slate-500 shrink-0">-15d</span>
         <input
           type="range"
           min="-15"
@@ -137,9 +137,9 @@ export const TimelineControl: React.FC<TimelineControlProps> = ({
           onMouseUp={handleSliderMouseUp}
           onTouchStart={handleSliderMouseDown}
           onTouchEnd={handleSliderTouchEnd}
-          className="flex-1 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+          className="flex-1 h-1 bg-slate-800 rounded-full appearance-none cursor-pointer accent-cyan-500"
         />
-        <span className="text-[10px] font-mono text-slate-400 shrink-0">+15d</span>
+        <span className="text-[11px] font-mono text-slate-500 shrink-0">+15d</span>
       </div>
     </div>
   );
